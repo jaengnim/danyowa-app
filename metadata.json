@@ -1,0 +1,7 @@
+{
+  "name": "Copy of 다녀와beta.2.1",
+  "description": "우리 아이 학원 일정과 알림을 책임지는 스마트한 스케줄 매니저, 다녀와",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
