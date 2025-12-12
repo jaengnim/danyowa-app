@@ -19,6 +19,7 @@ import {
     syncSubscriptionWithServer,
     sendTestNotification
 } from './services/pushNotificationService';
+import { signOut } from './services/authService';
 
 const formatDate = (date: Date) => date.toISOString().split('T')[0];
 
@@ -446,8 +447,13 @@ function App() {
         setUser(userData);
     };
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
         if (confirm('로그아웃 하시겠습니까?')) {
+            try {
+                await signOut();
+            } catch (e) {
+                console.error('Signout error:', e);
+            }
             setUser(null);
             setShowProfileMenu(false);
         }
@@ -636,8 +642,8 @@ function App() {
                         <button
                             onClick={pushPermission === 'granted' ? handleTestNotification : handleEnablePush}
                             className={`p-2 rounded-lg transition-colors flex items-center gap-1.5 ${pushPermission === 'granted'
-                                    ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
-                                    : 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 animate-pulse'
+                                ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400'
+                                : 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 animate-pulse'
                                 }`}
                             title={pushPermission === 'granted' ? '테스트 알림 보내기' : '알림 활성화하기'}
                         >

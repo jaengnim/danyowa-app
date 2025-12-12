@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { CheckCircle2, ShieldCheck, Calendar } from 'lucide-react';
+import { signInWithGoogle, firebaseUserToProfile } from '../services/authService';
 
 interface LoginScreenProps {
   onLogin: (user: any) => void;
@@ -8,31 +9,36 @@ interface LoginScreenProps {
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleGoogleLogin = () => {
+  const handleGoogleLogin = async () => {
     setIsLoading(true);
-    setTimeout(() => {
-      const mockUser = {
-        id: 'google-user-123',
-        name: '학부모님',
-        email: 'parent@gmail.com',
-        photoUrl: null 
-      };
-      onLogin(mockUser);
+    setError(null);
+
+    try {
+      const firebaseUser = await signInWithGoogle();
+      if (firebaseUser) {
+        const userProfile = firebaseUserToProfile(firebaseUser);
+        onLogin(userProfile);
+      }
+    } catch (err: any) {
+      console.error('Login error:', err);
+      setError(err.message || '로그인에 실패했습니다. 다시 시도해주세요.');
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-white dark:from-gray-900 dark:to-gray-800 flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-3xl shadow-xl overflow-hidden border border-gray-100 dark:border-gray-700 animate-fade-in-up">
-        
+
         {/* Header Section */}
         <div className="bg-indigo-600 p-8 text-center relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
           <div className="relative z-10 flex flex-col items-center">
             <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-lg mb-4 text-indigo-600">
-               <Calendar className="w-8 h-8" strokeWidth={2.5} />
+              <Calendar className="w-8 h-8" strokeWidth={2.5} />
             </div>
             <h1 className="text-2xl font-bold text-white mb-1">다녀와</h1>
             <p className="text-indigo-200 text-sm">우리 아이 일정 관리의 시작</p>
@@ -41,7 +47,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
 
         {/* Content Section */}
         <div className="p-8 space-y-8">
-          
+
           <div className="space-y-4">
             <div className="flex items-start gap-3">
               <CheckCircle2 className="w-5 h-5 text-indigo-500 mt-0.5 shrink-0" />
@@ -98,18 +104,23 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                 </>
               )}
             </button>
+            {error && (
+              <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg">
+                <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+              </div>
+            )}
             <div className="flex items-center justify-between mt-4">
-                <div className="flex items-center gap-1.5 text-xs text-gray-400">
-                   <ShieldCheck className="w-3 h-3" />
-                   <span>안전한 보안 로그인</span>
-                </div>
+              <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                <ShieldCheck className="w-3 h-3" />
+                <span>안전한 보안 로그인</span>
+              </div>
             </div>
           </div>
         </div>
-        
+
         {/* Footer */}
         <div className="bg-gray-50 dark:bg-gray-750 p-4 text-center border-t border-gray-100 dark:border-gray-700">
-           <p className="text-xs text-gray-400">© 2024 다녀와. All rights reserved.</p>
+          <p className="text-xs text-gray-400">© 2024 다녀와. All rights reserved.</p>
         </div>
       </div>
     </div>
