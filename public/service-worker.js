@@ -1,27 +1,31 @@
-const CACHE_NAME = 'danyowa-v3';
+const CACHE_NAME = 'danyowa-v5';
 const urlsToCache = [
-  '/',
-  '/index.html',
   '/manifest.json'
 ];
 
 // Install event - cache assets
 self.addEventListener('install', event => {
+  console.log('[Service Worker] Installing new version:', CACHE_NAME);
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(urlsToCache))
   );
-  // Activate immediately
+  // Activate immediately - skip waiting
   self.skipWaiting();
 });
 
-// Activate event - clean old caches
+// Activate event - clean ALL old caches
 self.addEventListener('activate', event => {
+  console.log('[Service Worker] Activating:', CACHE_NAME);
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
-        cacheNames.filter(name => name !== CACHE_NAME)
-          .map(name => caches.delete(name))
+        cacheNames
+          .filter(name => name !== CACHE_NAME)
+          .map(name => {
+            console.log('[Service Worker] Deleting old cache:', name);
+            return caches.delete(name);
+          })
       );
     })
   );
@@ -29,12 +33,34 @@ self.addEventListener('activate', event => {
   self.clients.claim();
 });
 
-// Fetch event - serve from cache
+// Fetch event - NETWORK FIRST for HTML/JS, cache for others
 self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => response || fetch(event.request))
-  );
+  const url = new URL(event.request.url);
+
+  // For HTML and JS files, always try network first
+  if (event.request.mode === 'navigate' ||
+    url.pathname.endsWith('.html') ||
+    url.pathname.endsWith('.js') ||
+    url.pathname.startsWith('/assets/')) {
+    event.respondWith(
+      fetch(event.request)
+        .then(response => {
+          // Clone and cache the response
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, responseClone);
+          });
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    );
+  } else {
+    // For other resources, try cache first
+    event.respondWith(
+      caches.match(event.request)
+        .then(response => response || fetch(event.request))
+    );
+  }
 });
 
 // Push event - handle incoming push notifications
