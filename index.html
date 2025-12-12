@@ -61,10 +61,51 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/service-worker.js')
-            .then(reg => console.log('SW registered'))
-            .catch(err => console.log('SW failed', err));
+          navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
+            .then(reg => {
+              console.log('SW registered', reg);
+              // #region agent log
+              fetch('http://127.0.0.1:7242/ingest/d3246301-7d65-4efc-ae7c-8b9ee7f0f794',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:register',message:'Service Worker registered',data:{scope:reg.scope,active:reg.active?.state,installing:reg.installing?.state,waiting:reg.waiting?.state},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+              // #endregion
+              
+              // Check for updates
+              reg.addEventListener('updatefound', () => {
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/d3246301-7d65-4efc-ae7c-8b9ee7f0f794',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:updatefound',message:'Service Worker update found',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+                // #endregion
+                const newWorker = reg.installing;
+                if (newWorker) {
+                  newWorker.addEventListener('statechange', () => {
+                    // #region agent log
+                    fetch('http://127.0.0.1:7242/ingest/d3246301-7d65-4efc-ae7c-8b9ee7f0f794',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:statechange',message:'Service Worker state changed',data:{state:newWorker.state},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+                    // #endregion
+                    if (newWorker.state === 'activated') {
+                      // #region agent log
+                      fetch('http://127.0.0.1:7242/ingest/d3246301-7d65-4efc-ae7c-8b9ee7f0f794',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:activated',message:'Service Worker activated',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+                      // #endregion
+                    }
+                  });
+                }
+              });
+              
+              // Check if already active
+              if (reg.active) {
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/d3246301-7d65-4efc-ae7c-8b9ee7f0f794',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:active',message:'Service Worker already active',data:{state:reg.active.state},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+                // #endregion
+              }
+            })
+            .catch(err => {
+              console.log('SW failed', err);
+              // #region agent log
+              fetch('http://127.0.0.1:7242/ingest/d3246301-7d65-4efc-ae7c-8b9ee7f0f794',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:register',message:'Service Worker registration failed',data:{error:err.message,stack:err.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+              // #endregion
+            });
         });
+      } else {
+        // #region agent log
+        fetch('http://127.0.0.1:7242/ingest/d3246301-7d65-4efc-ae7c-8b9ee7f0f794',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:register',message:'Service Worker not supported',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+        // #endregion
       }
     </script>
   </body>

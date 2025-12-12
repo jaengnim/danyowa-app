@@ -12,6 +12,11 @@ const googleProvider = new GoogleAuthProvider();
 
 // Google 로그인
 export async function signInWithGoogle(): Promise<User | null> {
+    if (!auth) {
+        console.error('Firebase auth is not initialized');
+        throw new Error('Firebase가 초기화되지 않았습니다. 페이지를 새로고침해주세요.');
+    }
+
     try {
         const result = await signInWithPopup(auth, googleProvider);
         console.log('Google login successful:', result.user.email);
@@ -34,6 +39,11 @@ export async function signInWithGoogle(): Promise<User | null> {
 
 // 로그아웃
 export async function signOut(): Promise<void> {
+    if (!auth) {
+        console.error('Firebase auth is not initialized');
+        return;
+    }
+
     try {
         await firebaseSignOut(auth);
         console.log('Signed out successfully');
@@ -45,11 +55,16 @@ export async function signOut(): Promise<void> {
 
 // 인증 상태 변경 감지
 export function onAuthStateChanged(callback: (user: User | null) => void): () => void {
+    if (!auth) {
+        console.error('Firebase auth is not initialized');
+        return () => { };
+    }
     return firebaseOnAuthStateChanged(auth, callback);
 }
 
 // 현재 사용자 가져오기
 export function getCurrentUser(): User | null {
+    if (!auth) return null;
     return auth.currentUser;
 }
 
