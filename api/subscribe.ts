@@ -1,15 +1,17 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { kv } from '@vercel/kv';
 
-// In-memory storage for demo/personal use
-// For production, use Vercel KV, Supabase, or Firebase
-let subscriptions: Map<string, {
-  subscription: PushSubscription;
+// Key prefix for subscriptions
+const SUBSCRIPTION_PREFIX = 'sub:';
+
+interface SubscriptionData {
+  subscription: any;
   schedules: any[];
   briefingSettings: any;
   children: any[];
   userId: string;
   updatedAt: string;
-}> = new Map();
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Enable CORS
@@ -29,14 +31,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(400).json({ error: 'userId and subscription are required' });
       }
 
-      subscriptions.set(userId, {
+      const data: SubscriptionData = {
         subscription,
         schedules: schedules || [],
-        briefingSettings: briefingSettings || { enabled: false, time: "08:00", days: [1,2,3,4,5] },
+        briefingSettings: briefingSettings || { enabled: false, time: "08:00", days: [1, 2, 3, 4, 5] },
         children: children || [],
         userId,
         updatedAt: new Date().toISOString()
-      });
+      };
+
+      // Save to Vercel KV
+      await kv.set(`${SUBSCRIPTION_PREFIX}${userId}`, data);
+
+      // Also add to the list of all user IDs for easier retrieval
+      await kv.sadd('subscription_users', userId);
 
       console.log(`Subscription saved for user: ${userId}`);
       return res.status(200).json({ success: true, message: 'Subscription saved' });
@@ -47,16 +55,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (req.method === 'GET') {
-    // Return all subscriptions (for cron job)
-    const allSubs = Array.from(subscriptions.values());
-    return res.status(200).json({ subscriptions: allSubs });
+    try {
+      // Get all user IDs from the set
+      const userIds = await kv.smembers('subscription_users');
+
+      if (!userIds || userIds.length === 0) {
+        return res.status(200).json({ subscriptions: [] });
+      }
+
+      // Get all subscriptions
+      const subscriptions: SubscriptionData[] = [];
+      for (const userId of userIds) {
+        const data = await kv.get<SubscriptionData>(`${SUBSCRIPTION_PREFIX}${userId}`);
+        if (data) {
+          subscriptions.push(data);
+        }
+      }
+
+      return res.status(200).json({ subscriptions });
+    } catch (error) {
+      console.error('Error getting subscriptions:', error);
+      return res.status(500).json({ error: 'Failed to get subscriptions' });
+    }
   }
 
   if (req.method === 'DELETE') {
     try {
       const { userId } = req.body;
       if (userId) {
-        subscriptions.delete(userId);
+        await kv.del(`${SUBSCRIPTION_PREFIX}${userId}`);
+        await kv.srem('subscription_users', userId);
         return res.status(200).json({ success: true, message: 'Subscription removed' });
       }
       return res.status(400).json({ error: 'userId is required' });
@@ -67,3 +95,4 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   return res.status(405).json({ error: 'Method not allowed' });
 }
+

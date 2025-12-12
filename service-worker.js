@@ -101,13 +101,20 @@ self.addEventListener('push', event => {
   const title = payload.title || '다녀와 알림';
   const options = {
     body: payload.body || '새로운 알림이 있습니다',
-    icon: payload.icon || '/favicon.ico',
-    badge: payload.badge || '/favicon.ico',
+    icon: payload.icon || 'https://cdn-icons-png.flaticon.com/512/2693/2693507.png',
+    badge: payload.badge || 'https://cdn-icons-png.flaticon.com/512/2693/2693507.png',
     data: payload.data || {},
     vibrate: payload.vibrate || [100, 50, 100],
     requireInteraction: false,
     tag: payload.data?.scheduleId || 'default',
-    renotify: false
+    renotify: false,
+    // 모바일에서 백그라운드 알림을 위한 추가 옵션
+    silent: false,
+    timestamp: Date.now(),
+    // Android에서 알림이 표시되도록 보장
+    actions: payload.actions || [],
+    // iOS에서 알림이 표시되도록 보장
+    sound: payload.sound || 'default'
   };
 
   // #region agent log
