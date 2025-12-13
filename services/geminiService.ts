@@ -30,6 +30,34 @@ async function decodeAudioData(
   return audioBuffer;
 }
 
+// Web Speech API Fallback
+const playFallbackTTS = (text: string, onStart?: () => void, onEnd?: () => void) => {
+  console.log('Using fallback TTS');
+
+  // 취소 후 재생 (중복 방지)
+  window.speechSynthesis.cancel();
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = 'ko-KR';
+  utterance.rate = 1.0;
+  utterance.pitch = 1.0;
+
+  utterance.onstart = () => {
+    if (onStart) onStart();
+  };
+
+  utterance.onend = () => {
+    if (onEnd) onEnd();
+  };
+
+  utterance.onerror = (e) => {
+    console.error('Fallback TTS error:', e);
+    if (onEnd) onEnd();
+  };
+
+  window.speechSynthesis.speak(utterance);
+};
+
 export const playAnnouncement = async (
   text: string,
   voiceName: VoiceName,
@@ -41,17 +69,9 @@ export const playAnnouncement = async (
     // Vite 환경변수에서 API 키 읽기
     const apiKey = import.meta.env.VITE_API_KEY || '';
 
-    console.log('API Key 확인:', {
-      length: apiKey?.length || 0,
-      exists: !!apiKey,
-      prefix: apiKey ? apiKey.substring(0, 10) + '...' : 'EMPTY'
-    });
-
     if (!apiKey) {
-      const msg = "❌ API Key 오류\n\n[Vercel 설정 확인]\n1. Project Settings → Environment Variables\n2. Key: VITE_API_KEY\n3. Value: 실제 Gemini API 키 입력\n4. Redeploy 실행";
-      console.error(msg);
-      alert(msg);
-      if (onEnd) onEnd();
+      console.warn("API Key 없음, Fallback TTS 사용");
+      playFallbackTTS(text, onStart, onEnd);
       return;
     }
 
@@ -110,18 +130,15 @@ export const playAnnouncement = async (
     const errorMsg = error.message || JSON.stringify(error);
 
     if (errorMsg.includes('429') || errorMsg.includes('RESOURCE_EXHAUSTED')) {
-      // 할당량 초과 에러
-      alert("😅 AI 목소리가 잠시 쉬고 있어요.\n(1분 뒤에 다시 시도해주세요)");
+      // 할당량 초과 시 Fallback TTS 자동 실행
+      console.log("Gemini Quota Exceeded. Switching to Fallback TTS.");
+      playFallbackTTS(text, onStart, onEnd);
     } else if (errorMsg.includes('API Key')) {
-      // API 키 관련 에러는 그대로 표시 (설정 필요하므로)
-      alert(`API 설정 오류:\n${errorMsg}`);
+      playFallbackTTS(text, onStart, onEnd);
     } else {
-      // 기타 에러는 간단하게 표시
-      console.warn('TTS 재생 실패:', errorMsg);
-      // 너무 잦은 에러 팝업 방지 (필요하면 주석 해제)
-      // alert("음성 안내를 재생할 수 없습니다.");
+      // 기타 에러 시에도 Fallback 시도
+      console.warn('Unknown TTS Error. Switching to Fallback TTS.');
+      playFallbackTTS(text, onStart, onEnd);
     }
-
-    if (onEnd) onEnd();
   }
 };
