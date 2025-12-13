@@ -105,7 +105,23 @@ export const playAnnouncement = async (
 
   } catch (error: any) {
     console.error("❌ 재생 오류:", error);
-    alert(`오류 발생:\n${error.message || JSON.stringify(error)}`);
+
+    // 에러 메시지 분석
+    const errorMsg = error.message || JSON.stringify(error);
+
+    if (errorMsg.includes('429') || errorMsg.includes('RESOURCE_EXHAUSTED')) {
+      // 할당량 초과 에러
+      alert("😅 AI 목소리가 잠시 쉬고 있어요.\n(1분 뒤에 다시 시도해주세요)");
+    } else if (errorMsg.includes('API Key')) {
+      // API 키 관련 에러는 그대로 표시 (설정 필요하므로)
+      alert(`API 설정 오류:\n${errorMsg}`);
+    } else {
+      // 기타 에러는 간단하게 표시
+      console.warn('TTS 재생 실패:', errorMsg);
+      // 너무 잦은 에러 팝업 방지 (필요하면 주석 해제)
+      // alert("음성 안내를 재생할 수 없습니다.");
+    }
+
     if (onEnd) onEnd();
   }
 };
