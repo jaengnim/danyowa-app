@@ -1,4 +1,4 @@
-const CACHE_NAME = 'danyowa-v5';
+const CACHE_NAME = 'danyowa-v6';
 const urlsToCache = [
   '/manifest.json'
 ];
@@ -87,14 +87,17 @@ self.addEventListener('push', event => {
     body: data.body,
     icon: data.icon,
     badge: data.badge,
-    vibrate: [200, 100, 200, 100, 200],
+    // 진동을 더 길게: 0.5초 진동, 0.2초 쉼, 0.5초 진동
+    vibrate: [500, 250, 500, 250, 500],
     tag: data.data?.type || 'default',
     renotify: true,
     requireInteraction: true,
     data: data.data,
+    // 시스템 기본 알림음 사용 유도 (지원 브라우저용)
+    sound: 'default',
     actions: [
       { action: 'open', title: '앱 열기' },
-      { action: 'dismiss', title: '닫기' }
+      { action: 'close', title: '닫기' }
     ]
   };
 
@@ -109,12 +112,19 @@ self.addEventListener('notificationclick', event => {
 
   event.notification.close();
 
-  if (event.action === 'dismiss') {
+  if (event.action === 'close') {
     return;
   }
 
-  // Open or focus the app
-  const urlToOpen = event.notification.data?.url || '/';
+  // Open or focus the app with speak=true parameter
+  let urlToOpen = event.notification.data?.url || '/';
+
+  // URL에 파라미터 추가 (이미 있으면 & 없으면 ?)
+  if (urlToOpen.includes('?')) {
+    urlToOpen += '&speak=true';
+  } else {
+    urlToOpen += '?speak=true';
+  }
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true })
@@ -135,6 +145,7 @@ self.addEventListener('notificationclick', event => {
         }
       })
   );
+});
 });
 
 // Notification close event

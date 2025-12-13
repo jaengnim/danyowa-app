@@ -236,6 +236,9 @@ function App() {
         }
     }, [pushPermission]);
 
+    // Moved useEffect from here to avoid TDZ error
+
+
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
         return () => clearInterval(timer);
@@ -345,6 +348,22 @@ function App() {
             alert("브리핑을 시작할 수 없습니다: " + e.message);
         }
     }, [currentTime, schedules, exceptions, children, selectedChildFilter, weather, selectedRegion, isBriefingLoading]);
+
+    // Handle notification click with speak=true (Placed here to access handleBriefing)
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('speak') === 'true') {
+            console.log("Notification clicked, starting briefing...");
+            // Remove the query param
+            const newUrl = window.location.pathname;
+            window.history.replaceState({}, document.title, newUrl);
+
+            // Start briefing after a short delay
+            setTimeout(() => {
+                handleBriefing();
+            }, 500);
+        }
+    }, [handleBriefing]);
 
     useEffect(() => {
         const currentDay = currentTime.getDay();
