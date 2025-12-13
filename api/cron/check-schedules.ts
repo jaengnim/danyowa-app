@@ -1,22 +1,44 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import webpush from 'web-push';
 
+import { kv } from '@vercel/kv';
+
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || '';
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || '';
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:danyowa@example.com';
+const SUBSCRIPTION_PREFIX = 'sub:';
+
+interface SubscriptionData {
+    subscription: any;
+    schedules: any[];
+    briefingSettings: any;
+    children: any[];
+    userId: string;
+    updatedAt: string;
+}
 
 if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
     webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 }
 
-// Helper to get subscriptions from the subscribe API
-async function getSubscriptions(baseUrl: string) {
+// Helper to get subscriptions directly from KV
+async function getSubscriptions() {
     try {
-        const response = await fetch(`${baseUrl}/api/subscribe`);
-        const data = await response.json();
-        return data.subscriptions || [];
+        const userIds = await kv.smembers('subscription_users');
+        if (!userIds || userIds.length === 0) {
+            return [];
+        }
+
+        const subscriptions: SubscriptionData[] = [];
+        for (const userId of userIds) {
+            const data = await kv.get<SubscriptionData>(`${SUBSCRIPTION_PREFIX}${userId}`);
+            if (data) {
+                subscriptions.push(data);
+            }
+        }
+        return subscriptions;
     } catch (error) {
-        console.error('Failed to fetch subscriptions:', error);
+        console.error('Failed to fetch subscriptions from KV:', error);
         return [];
     }
 }
@@ -53,8 +75,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     console.log(`Cron running at ${currentTimeStr} (Korea time), day: ${currentDay}`);
 
+    console.log(`Cron running at ${currentTimeStr} (Korea time), day: ${currentDay}`);
+
     try {
-        const subscriptions = await getSubscriptions(baseUrl);
+        const subscriptions = await getSubscriptions();
         let notificationsSent = 0;
 
         for (const sub of subscriptions) {
